@@ -22,25 +22,28 @@ One way is to use find_by_sql:
 ```
 orders = Order.find_by_sql("SELECT orders.* FROM orders WHERE order.customer_id = 5;")
 ```
-And you can also do this with a query parameter, in which case you pass an array:
+And you can also do this with a bind parameter, in which case you pass an array:
 ```
-orders = Order.find_by_sql(["SELECT orders.* FROM orders WHERE order.customer_id = ?;", 5])
+orders = Order.find_by_sql("SELECT orders.* FROM orders WHERE order.customer_id = ?;", [5])
 ```
-Here the first element of the array is the query string, and each subsequent element is the corresponding query parameter.
+Here the optional second argument is the the array of bind parameters.
 
 You can make the SQL as complicated as you need, with JOIN, ORDER BY, LIMIT, HAVING, etc.  However, find_by_sql is a method, in this case, of the Order model, so what you retrieve is an Active Record relation of Orders.  You have to be careful to select the attributes corresponding to the Orders class.
 
-Be very careful in passing user input to an SQL query.  This is how SQL injection attacks occur.  If you pass user input as parameters to an SQL query, the parameters are sanitized by Active Record, preventing the attack.
+Be very careful in passing user input to an SQL query.  This is how SQL injection attacks occur.  If you pass user input as bind parameters to an SQL query, the parameters are sanitized by Active Record, preventing the attack.
 
 ## Using Your Own SQL To Return an Array of Hashes (Execute)
 
 The following query:
 ```
-records = ActiveRecord::Base.connection.execute("SELECT orders.*, customer_name FROM orders JOIN customers ON orders.customer_id = customers.id;")
+records = ActiveRecord::Base.connection.exec_query("SELECT orders.*, customer_name FROM orders JOIN customers ON orders.customer_id = customers.id;")
 ```
-will return an array of hashes.  Each row is returned as a hash, and in the hashes the keys are the column names from the tables.  If you select the right collection of attributes, you could pass these to a new or create operation.
+will return an array of hashes.  Each row is returned as a hash, and in the hashes the keys are the column names from the tables.  If you select the right collection of attributes, you could pass these to a new or create operation.  You can also pass one or more bind parameters:
+```
+records = ActiveRecord::Base.connection.exec_query("SELECT orders.* FROM ORDERS WHERE id = ?;", "SQL", [3])
+```
 
-You can do write operations this way (INSERT INTO, UPDATE, DELETE), but this can be troublesome.  Active Record entries may have attributes like created_at that are clumsy to add.  Also, such an approach bypasses the validations in your model.  You would do write operations this way for tables that are only to be accessed using SQL, and that are never accessed using Active Directory models.
+You can do write operations using connection.execute (INSERT INTO, UPDATE, DELETE), but this can be troublesome.  Active Record entries may have attributes like created_at that are clumsy to add.  Also, such an approach bypasses the validations in your model.  You would do write operations this way for tables that are only to be accessed using SQL, and that are never accessed using Active Directory models.
 
 ## Using Your Own SQL To Return a Result with Arrays of Values (Select All)
 
@@ -57,4 +60,4 @@ csv_string = CSV.generate do |csv|
   end
 end
 ```
-The advantage of select_all is that you can easily combine information from several tables, change column names, etc.
+The advantage of select_all is that you can easily combine information from several tables, change column names, etc.  You can also pass bind parameters using the same syntax as for exec_query.
